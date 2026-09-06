@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>WPF Voice Agent</title>
+
+    <link rel="stylesheet"
+          href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>WPF Voice Agent</h1>
+
+        <div class="status-panel">
+
+            <div>
+                <span class="label">State:</span>
+                <span id="state">Idle</span>
+            </div>
+
+            <div>
+                <span class="label">Status:</span>
+                <span id="status">
+                    Waiting for wake word
+                </span>
+            </div>
+
+        </div>
+
+        <div id="conversation"
+             class="conversation">
+        </div>
+
+        <div class="controls">
+
+            <button id="startButton">
+                Start Agent
+            </button>
+
+            <button id="stopButton"
+                    disabled>
+                Stop
+            </button>
+
+        </div>
+
+        <div id="error"
+             class="error">
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+</html>

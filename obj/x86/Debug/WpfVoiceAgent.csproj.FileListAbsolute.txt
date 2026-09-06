@@ -22,3 +22,14 @@ C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WpfVoiceAgent.csproj.Co
 C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WpfVoiceAgent.csproj.CopyComplete
 C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WpfVoiceAgent.exe
 C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WpfVoiceAgent.pdb
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\runtimes\win-x86\native\WebView2Loader.dll
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WebView2Loader.dll
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\Microsoft.Web.WebView2.Core.dll
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\Microsoft.Web.WebView2.WinForms.dll
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\Microsoft.Web.WebView2.Wpf.dll
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WebViewWindow.baml
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WebViewWindow.g.cs
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\obj\x86\Debug\WpfVoiceAgent_Content.g.cs
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WebUI\app.js
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WebUI\index.html
+C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WebUI\style.css

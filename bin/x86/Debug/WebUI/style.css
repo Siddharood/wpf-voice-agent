@@ -1,0 +1,64 @@
+﻿body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+    margin: 40px auto;
+}
+
+h1 {
+    font-size: 32px;
+}
+
+.status-panel {
+    background: white;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.label {
+    font-weight: bold;
+}
+
+.conversation {
+    background: white;
+    min-height: 350px;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-y: auto;
+}
+
+.message {
+    margin-bottom: 15px;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.user {
+    background: #e8f0ff;
+}
+
+.agent {
+    background: #eeeeee;
+}
+
+.controls {
+    margin-top: 20px;
+}
+
+button {
+    width: 130px;
+    height: 40px;
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+.error {
+    margin-top: 15px;
+    color: darkred;
+}

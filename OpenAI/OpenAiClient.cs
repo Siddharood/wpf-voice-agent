@@ -21,8 +21,8 @@ namespace WpfVoiceAgent.OpenAI
 
         public OpenAiClient()
         {
-            string key = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-
+            string key = "";
+            
             if (string.IsNullOrWhiteSpace(key))
                 key = ConfigurationManager.AppSettings["OpenAIApiKey"];
 

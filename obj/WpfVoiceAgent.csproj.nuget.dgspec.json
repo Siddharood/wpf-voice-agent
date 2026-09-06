@@ -34,6 +34,10 @@
       "frameworks": {
         "net48": {
           "dependencies": {
+            "Microsoft.Web.WebView2": {
+              "target": "Package",
+              "version": "[1.0.4191.47, )"
+            },
             "NAudio": {
               "target": "Package",
               "version": "[2.2.1, )"
