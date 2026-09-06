@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{5E52D53E-7E1B-4B85-A4E0-2C2A0D6A9A11}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>WpfVoiceAgent</RootNamespace>
+    <AssemblyName>WpfVoiceAgent</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Configuration" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Speech" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </ApplicationDefinition>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="Audio\AdaptiveAecProcessor.cs" />
+    <Compile Include="Audio\MultiSpeakerOverlapDetector.cs" />
+    <Compile Include="MainWindow.xaml.cs" />
+    <Compile Include="Models\AgentState.cs" />
+    <Compile Include="Models\ConversationMessage.cs" />
+    <Compile Include="Audio\IAudioCapture.cs" />
+    <Compile Include="Audio\WasapiAudioCapture.cs" />
+    <Compile Include="Audio\IAudioPlayback.cs" />
+    <Compile Include="Audio\WasapiAudioPlayback.cs" />
+    <Compile Include="Audio\IAecProcessor.cs" />
+    <Compile Include="Audio\PassthroughAecProcessor.cs" />
+    <Compile Include="Audio\EnergyVad.cs" />
+    <Compile Include="WakeWord\IWakeWordDetector.cs" />
+    <Compile Include="WakeWord\KeywordWakeWordDetector.cs" />
+    <Compile Include="OpenAI\OpenAiClient.cs" />
+    <Compile Include="Agent\VoiceAgentController.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <!-- Moved to the bottom so properties are fully evaluated before compilation targets run -->
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

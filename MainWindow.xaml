@@ -1,0 +1,49 @@
+<Window x:Class="WpfVoiceAgent.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WPF Voice Agent" Height="600" Width="900"
+        Closing="Window_Closing">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="WPF Voice Agent"
+                   FontSize="28"
+                   FontWeight="Bold"/>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,15,0,15">
+            <TextBlock Text="State:" FontWeight="Bold"/>
+            <TextBlock x:Name="StateText" Margin="8,0,25,0" Text="Idle"/>
+            <TextBlock Text="Status:" FontWeight="Bold"/>
+            <TextBlock x:Name="StatusText" Margin="8,0,0,0"/>
+        </StackPanel>
+
+        <GroupBox Grid.Row="2" Header="Conversation">
+            <TextBox x:Name="ConversationBox"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     FontSize="16"
+                     Padding="10"/>
+        </GroupBox>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,15,0,0">
+            <Button x:Name="StartButton"
+                    Width="120" Height="35"
+                    Click="Start_Click"
+                    Content="Start Agent"/>
+            <Button x:Name="StopButton"
+                    Width="120" Height="35"
+                    Margin="10,0,0,0"
+                    Click="Stop_Click"
+                    Content="Stop"/>
+            <TextBlock x:Name="ErrorText"
+                       Margin="20,8,0,0"
+                       Foreground="DarkRed"/>
+        </StackPanel>
+    </Grid>
+</Window>
