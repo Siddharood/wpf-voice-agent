@@ -48,21 +48,18 @@
     </Page>
     <Compile Include="App.xaml.cs" />
     <Compile Include="Audio\AdaptiveAecProcessor.cs" />
-    <Compile Include="Audio\MultiSpeakerOverlapDetector.cs" />
+    <Compile Include="Audio\PcmResampler.cs" />
+    <Compile Include="Audio\RealtimeAudioPlayback.cs" />
+    <Compile Include="OpenAI\OpenAiRealtimeClient.cs" />
     <Compile Include="WebViewWindow.xaml.cs" />
     <Compile Include="MainWindow.xaml.cs" />
     <Compile Include="Models\AgentState.cs" />
-    <Compile Include="Models\ConversationMessage.cs" />
     <Compile Include="Audio\IAudioCapture.cs" />
     <Compile Include="Audio\WasapiAudioCapture.cs" />
     <Compile Include="Audio\IAudioPlayback.cs" />
-    <Compile Include="Audio\WasapiAudioPlayback.cs" />
     <Compile Include="Audio\IAecProcessor.cs" />
-    <Compile Include="Audio\PassthroughAecProcessor.cs" />
-    <Compile Include="Audio\EnergyVad.cs" />
     <Compile Include="WakeWord\IWakeWordDetector.cs" />
     <Compile Include="WakeWord\KeywordWakeWordDetector.cs" />
-    <Compile Include="OpenAI\OpenAiClient.cs" />
     <Compile Include="Agent\VoiceAgentController.cs" />
   </ItemGroup>
   <ItemGroup>

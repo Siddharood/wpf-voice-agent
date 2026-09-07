@@ -1,8 +1,5 @@
-using NAudio.Wave;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.IO;
+﻿using System;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using WpfVoiceAgent.Audio;
@@ -15,398 +12,1232 @@ namespace WpfVoiceAgent.Agent
     public sealed class VoiceAgentController : IDisposable
     {
         private readonly IAudioCapture _capture;
-        private readonly IAudioPlayback _playback;
         private readonly IAecProcessor _aec;
         private readonly IWakeWordDetector _wakeWord;
-        private readonly OpenAiClient _openAi;
-        private readonly EnergyVad _vad;
-        private readonly MultiSpeakerOverlapDetector _overlapDetector;
-        private bool _heardSpeech;
+        private readonly OpenAiRealtimeClient _realtime;
+        private readonly RealtimeAudioPlayback _playback;
 
-        private readonly List<Dictionary<string, string>> _messages =
-            new List<Dictionary<string, string>>();
+        private readonly object _gate =
+            new object();
 
-        private readonly object _gate = new object();
         private CancellationTokenSource _cts;
-        private MemoryStream _turnAudio;
-        private bool _recordingTurn;
-        private DateTime _lastWakeUtc = DateTime.MinValue;
-        private DateTime _lastSpeechUtc = DateTime.MinValue;
-        private int _silentFrames;
 
-        private readonly KeywordWakeWordDetector _keywordWakeWord;
+        private AgentState _state =
+            AgentState.Idle;
 
-        public AgentState State { get; private set; } = AgentState.Idle;
+        private bool _started;
+        private bool _disposed;
+
+        private bool _wakeDetectionInProgress;
+
+        private bool _turnActive;
+        private bool _responseStarted;
+        private bool _responseFinished;
+
+        private long _turnGeneration;
+        private long _playbackGeneration;
+
+        private string _responseId;
+
+        private Task _turnCleanupTask;
+
+        /*
+         * UI transcript ordering.
+         *
+         * Realtime output transcript deltas can arrive before the completed
+         * user input transcript. Therefore agent text is buffered until the
+         * current turn's user transcript has been received.
+         */
+        private readonly StringBuilder _pendingAgentTranscript =
+            new StringBuilder();
+
+        private bool _userTranscriptReceived;
+        private bool _agentUiStarted;
 
         public event Action<AgentState> StateChanged;
-        public event Action<string> Transcript;
-        public event Action<string> Status;
+        public event Action<string> StatusChanged;
+        public event Action<string> TranscriptReceived;
+        public event Action<string> AgentResponseStarted;
         public event Action<string> Error;
 
         public VoiceAgentController(
             IAudioCapture capture,
-            IAudioPlayback playback,
             IAecProcessor aec,
             IWakeWordDetector wakeWord,
-            OpenAiClient openAi)
+            OpenAiRealtimeClient realtime,
+            RealtimeAudioPlayback playback)
         {
-            _capture = capture;
-            _playback = playback;
-            _aec = aec;
-            _wakeWord = wakeWord;
-            _openAi = openAi;
-            int sampleRate = Math.Max(8000, capture.WaveFormat.SampleRate);
+            _capture =
+                capture ??
+                throw new ArgumentNullException(
+                    nameof(capture));
 
-            _vad = new EnergyVad(sampleRate);
-            _overlapDetector =
-                new MultiSpeakerOverlapDetector(sampleRate);
+            _aec =
+                aec ??
+                throw new ArgumentNullException(
+                    nameof(aec));
 
-            _capture.DataAvailable += OnAudio;
-            _playback.PlaybackStarted += (s, e) =>
-            {
-                Status?.Invoke("Agent speaking");
-            };
-            _playback.PlaybackStopped += (s, e) =>
-            {
-                _aec.Reset();
+            _wakeWord =
+                wakeWord ??
+                throw new ArgumentNullException(
+                    nameof(wakeWord));
 
-                _wakeWord.SetEnabled(true);
+            _realtime =
+                realtime ??
+                throw new ArgumentNullException(
+                    nameof(realtime));
 
-                SetState(AgentState.Idle);
+            _playback =
+                playback ??
+                throw new ArgumentNullException(
+                    nameof(playback));
 
-                Status?.Invoke(
-                    "Waiting for wake word: Computer");
-            };
+            _capture.DataAvailable +=
+                Capture_DataAvailable;
 
-            _messages.Add(new Dictionary<string, string>
-            {
-                ["role"] = "system",
-                ["content"] =
-                    "You are a concise desktop voice assistant. " +
-                     "Always respond in English. " +
-                    "Answer naturally and briefly unless more detail is requested."
-            });
+            _realtime.Status +=
+                Realtime_Status;
+
+            _realtime.AudioReceived +=
+                Realtime_AudioReceived;
+
+            _realtime.UserTranscript +=
+                Realtime_UserTranscript;
+
+            _realtime.TranscriptDelta +=
+                Realtime_TranscriptDelta;
+
+            _realtime.ResponseStarted +=
+                Realtime_ResponseStarted;
+
+            _realtime.OutputAudioCompleted +=
+                Realtime_OutputAudioCompleted;
+
+            _realtime.ResponseCompleted +=
+                Realtime_ResponseCompleted;
+
+            _realtime.Disconnected +=
+                Realtime_Disconnected;
         }
 
         public void Start()
         {
-            _cts = new CancellationTokenSource();
-            _capture.Start();
-            SetState(AgentState.Idle);
-            //Status?.Invoke("Microphone active. Format: " +_capture.WaveFormat.ToString());
+            lock (_gate)
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(
+                        nameof(VoiceAgentController));
+                }
 
-            //BeginTurn();
-            Status?.Invoke("Microphone active. Waiting for wake word.");
+                if (_started)
+                    return;
+
+                _started = true;
+
+                _cts =
+                    new CancellationTokenSource();
+
+                _turnActive = false;
+                _responseStarted = false;
+                _responseFinished = false;
+                _responseId = null;
+
+                _turnGeneration = 0;
+                _playbackGeneration = 0;
+
+                _wakeDetectionInProgress = false;
+
+                ResetTranscriptState();
+            }
+
+            try
+            {
+                _playback.Start();
+
+                _wakeWord.SetEnabled(true);
+
+                SetState(
+                    AgentState.Idle);
+
+                SetStatus(
+                    "Waiting for wake word: Computer");
+
+                _capture.Start();
+            }
+            catch (Exception ex)
+            {
+                ReportError(
+                    "Agent start failed: " +
+                    ex.Message);
+
+                StopInternal();
+                throw;
+            }
         }
 
-        public void Stop()
+        private void Capture_DataAvailable(
+            object sender,
+            NAudio.Wave.WaveInEventArgs e)
         {
-            _cts?.Cancel();
-            _capture.Stop();
-            _recordingTurn = false;
-            _turnAudio?.Dispose();
-            _turnAudio = null;
-            SetState(AgentState.Idle);
-        }
-
-        private void OnAudio(object sender, WaveInEventArgs e)
-        {
-            if (_cts == null || _cts.IsCancellationRequested)
+            if (e == null ||
+                e.BytesRecorded <= 0 ||
+                e.Buffer == null)
+            {
                 return;
+            }
 
-            byte[] raw = new byte[e.BytesRecorded];
+            CancellationToken token;
+
+            bool turnActive;
+            bool responseStarted;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    _cts == null)
+                {
+                    return;
+                }
+
+                token = _cts.Token;
+
+                turnActive =
+                    _turnActive;
+
+                responseStarted =
+                    _responseStarted;
+            }
+
+            byte[] microphoneData =
+                new byte[e.BytesRecorded];
 
             Buffer.BlockCopy(
                 e.Buffer,
                 0,
-                raw,
+                microphoneData,
                 0,
                 e.BytesRecorded);
 
-            byte[] pcm16 =
-                ConvertToPcm16Mono(
-                    raw,
-                    _capture.WaveFormat);
-
-            byte[] cleaned =
-                _aec.ProcessCapture(pcm16);
-
-            if (_playback.IsPlaying)
-                return;
-
-            if (State == AgentState.Idle)
+            /*
+             * Wake-word mode.
+             *
+             * SAPI listens independently to the default microphone.
+             * We only use this capture callback as the lightweight gate
+             * that consumes the detector's latched wake event.
+             */
+            if (!turnActive)
             {
-                // Feed EVERY microphone frame to the wake-word detector.
-                bool detected = _wakeWord.DetectAsync(
-                    cleaned,
-                    _cts.Token).GetAwaiter().GetResult();
-
-                if (detected)
-                {
-                    _lastWakeUtc = DateTime.UtcNow;
-                    BeginTurn();
-                }
+                TryDetectWakeWord(
+                    microphoneData,
+                    token);
 
                 return;
-            }
-
-            if (State != AgentState.Listening)
-                return;
-
-            HandleListeningFrame(cleaned);
-        }
-
-
-        private void BeginTurn()
-        {
-            lock (_gate)
-            {
-                if (_recordingTurn)
-                    return;
-
-                _recordingTurn = true;
-                _turnAudio = new MemoryStream();
-                _silentFrames = 0;
-                _heardSpeech = false;
-                _lastSpeechUtc = DateTime.UtcNow;
             }
 
             /*
-             * Wake word has already been detected.
-             * Ignore further wake-word matches while processing
-             * this conversational turn.
+             * Once the Realtime response has started, stop sending
+             * microphone audio for this turn.
              */
-            _wakeWord.SetEnabled(false);
+            if (responseStarted)
+                return;
 
-            SetState(AgentState.Listening);
-            Status?.Invoke("Wake word detected. Listening...");
+            byte[] pcm16 =
+                ConvertCaptureToPcm16Mono(
+                    microphoneData,
+                    _capture.WaveFormat);
+
+            if (pcm16.Length == 0)
+                return;
+
+            byte[] aecProcessed =
+                _aec.ProcessCapture(
+                    pcm16);
+
+            if (aecProcessed == null ||
+                aecProcessed.Length == 0)
+            {
+                return;
+            }
+
+            byte[] pcm24k =
+                PcmResampler.Resample16BitMono(
+                    aecProcessed,
+                    48000,
+                    24000);
+
+            if (pcm24k.Length == 0)
+                return;
+
+            _ = SendRealtimeAudioAsync(
+                pcm24k,
+                token);
         }
 
-        private void HandleListeningFrame(byte[] pcm)
+        private void TryDetectWakeWord(
+            byte[] microphoneData,
+            CancellationToken cancellationToken)
         {
             lock (_gate)
             {
-                if (!_recordingTurn || _turnAudio == null)
+                if (_disposed ||
+                    !_started ||
+                    _turnActive ||
+                    _wakeDetectionInProgress)
+                {
                     return;
-
-                _turnAudio.Write(pcm, 0, pcm.Length);
-
-                bool speech = _vad.HasSpeech(pcm);
-
-                if (speech)
-                {
-                    _heardSpeech = true;
-                    _silentFrames = 0;
-                    _lastSpeechUtc = DateTime.UtcNow;
-                }
-                else
-                {
-                    _silentFrames++;
                 }
 
-                // Do not end the turn until the user has actually spoken.
-                if (!_heardSpeech)
-                    return;
-
-                // End after 900 ms of silence following speech.
-                if ((DateTime.UtcNow - _lastSpeechUtc) > TimeSpan.FromMilliseconds(900))
-                {
-                    _recordingTurn = false;
-
-                    MemoryStream completed = _turnAudio;
-                    _turnAudio = null;
-
-                    byte[] completedAudio = completed.ToArray();
-
-                    completed.Dispose();
-
-                    if (_overlapDetector.HasProbableOverlap(completedAudio))
-                    {
-                        Status?.Invoke(
-                            "Multiple speakers or overlapping speech detected. Please repeat.");
-
-                        SetState(AgentState.Idle);
-
-                        return;
-                    }
-
-                    _ = ProcessTurnAsync(completedAudio);
-
-                    completed.Dispose();
-                }
+                _wakeDetectionInProgress = true;
             }
+
+            _ = DetectWakeWordAsync(
+                microphoneData,
+                cancellationToken);
         }
 
-        private async Task ProcessTurnAsync(byte[] pcm)
+        private async Task DetectWakeWordAsync(
+            byte[] microphoneData,
+            CancellationToken cancellationToken)
         {
             try
             {
-                SetState(AgentState.Processing);
-                Status?.Invoke("Transcribing...");
+                bool detected =
+                    await _wakeWord.DetectAsync(
+                        microphoneData,
+                        cancellationToken)
+                        .ConfigureAwait(false);
 
-                byte[] wav = PcmToWav(
-                                    pcm,
-                                    _capture.WaveFormat.SampleRate,
-                                    1,
-                                    16);
+                if (!detected)
+                    return;
 
-                Status?.Invoke(
-                        "Transcribing... Audio bytes: " +
-                        pcm.Length +
-                        ", WAV bytes: " +
-                        wav.Length);
-
-                //string text = await _openAi.TranscribeWavAsync(
-                //    wav, _cts.Token).ConfigureAwait(false);
-
-
-                Status?.Invoke("Sending audio to OpenAI...");
-
-                string text = await _openAi.TranscribeWavAsync(
-                    wav, _cts.Token);
-
-                Status?.Invoke(
-                    "Transcription result: [" + text + "]");
-
-                if (string.IsNullOrWhiteSpace(text))
+                await BeginTurnAsync(
+                    cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                ReportError(
+                    "Wake-word detection failed: " +
+                    ex.Message);
+            }
+            finally
+            {
+                lock (_gate)
                 {
-                    SetState(AgentState.Idle);
-                    Status?.Invoke("No speech recognized.");
+                    _wakeDetectionInProgress = false;
+                }
+            }
+        }
+
+        private async Task BeginTurnAsync(
+            CancellationToken cancellationToken)
+        {
+            long generation;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    _turnActive)
+                {
                     return;
                 }
 
-                Transcript?.Invoke("You: " + text);
+                _turnActive = true;
 
-                _messages.Add(new Dictionary<string, string>
-                {
-                    ["role"] = "user",
-                    ["content"] = text
-                });
+                _responseStarted = false;
+                _responseFinished = false;
+                _responseId = null;
 
-                Status?.Invoke("Thinking...");
+                _turnGeneration++;
 
-                string answer = await _openAi.ChatAsync(
-                    _messages, _cts.Token).ConfigureAwait(false);
+                generation =
+                    _turnGeneration;
 
-                if (string.IsNullOrWhiteSpace(answer))
-                    return;
-
-                _messages.Add(new Dictionary<string, string>
-                {
-                    ["role"] = "assistant",
-                    ["content"] = answer
-                });
-
-                Transcript?.Invoke("Agent: " + answer);
-
-                Status?.Invoke("Generating speech...");
-                byte[] speech = await _openAi.TextToSpeechAsync(
-                    answer, _cts.Token).ConfigureAwait(false);
-
-                SetState(AgentState.Speaking);
-
-                // IMPORTANT:
-                // A production AEC implementation must receive the exact render
-                // reference here, synchronized with speaker playback.
-                await _playback.PlayWavAsync(
-                    speech, _cts.Token).ConfigureAwait(false);
+                ResetTranscriptState();
             }
-            catch (OperationCanceledException) { }
+
+            try
+            {
+                /*
+                 * Wake detector is now logically closed for this turn.
+                 */
+                _wakeWord.SetEnabled(false);
+
+                _aec.Reset();
+
+                _playback.Clear();
+
+                SetState(
+                    AgentState.Listening);
+
+                SetStatus(
+                    "Wake word detected. Listening...");
+
+                await EnsureRealtimeConnectedAsync(
+                    cancellationToken)
+                    .ConfigureAwait(false);
+
+                lock (_gate)
+                {
+                    if (_disposed ||
+                        !_started ||
+                        !_turnActive ||
+                        generation != _turnGeneration)
+                    {
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                await AbortTurnAsync(
+                    generation,
+                    false)
+                    .ConfigureAwait(false);
+            }
             catch (Exception ex)
             {
-                SetState(AgentState.Error);
-                Error?.Invoke(ex.ToString());
-                await Task.Delay(500).ConfigureAwait(false);
-                SetState(AgentState.Idle);
+                ReportError(
+                    "Turn start failed: " +
+                    ex.Message);
+
+                await AbortTurnAsync(
+                    generation,
+                    true)
+                    .ConfigureAwait(false);
             }
         }
 
-        private void SetState(AgentState state)
+        private async Task EnsureRealtimeConnectedAsync(
+            CancellationToken cancellationToken)
         {
-            State = state;
-            StateChanged?.Invoke(state);
+            if (_realtime.IsConnected)
+                return;
+
+            SetStatus(
+                "Connecting to OpenAI Realtime...");
+
+            await _realtime.ConnectAsync(
+                cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        private static byte[] ConvertToPcm16Mono(byte[] input, WaveFormat format)
+        private async Task SendRealtimeAudioAsync(
+            byte[] pcm24k,
+            CancellationToken cancellationToken)
         {
-            if (format.Encoding == WaveFormatEncoding.IeeeFloat &&
+            try
+            {
+                lock (_gate)
+                {
+                    if (_disposed ||
+                        !_started ||
+                        !_turnActive ||
+                        _responseStarted)
+                    {
+                        return;
+                    }
+                }
+
+                await _realtime.SendAudioAsync(
+                    pcm24k,
+                    cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                ReportError(
+                    "Realtime audio send failed: " +
+                    ex.Message);
+            }
+        }
+
+        private void Realtime_Status(
+            string status)
+        {
+            SetStatus(status);
+        }
+
+
+        private void Realtime_UserTranscript(
+    string transcript)
+        {
+            if (string.IsNullOrWhiteSpace(transcript))
+                return;
+
+            string pendingAgentText = null;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive)
+                {
+                    return;
+                }
+
+                _userTranscriptReceived = true;
+
+                if (_pendingAgentTranscript.Length > 0)
+                {
+                    pendingAgentText =
+                        _pendingAgentTranscript.ToString();
+
+                    _pendingAgentTranscript.Clear();
+
+                    _agentUiStarted = true;
+                }
+            }
+
+            // New line BEFORE the next You message.
+            TranscriptReceived?.Invoke(
+                Environment.NewLine +
+                Environment.NewLine +
+                "You: " +
+                transcript);
+
+            // Agent stays directly after You on the same line.
+            if (!string.IsNullOrEmpty(pendingAgentText))
+            {
+                TranscriptReceived?.Invoke(
+                    Environment.NewLine +
+                    "Agent: " +
+                    pendingAgentText);
+            }
+        }
+        private void Realtime_TranscriptDelta(
+    string delta)
+        {
+            if (string.IsNullOrEmpty(delta))
+                return;
+
+            bool addAgentPrefix = false;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive)
+                {
+                    return;
+                }
+
+                if (!_userTranscriptReceived)
+                {
+                    _pendingAgentTranscript.Append(delta);
+                    return;
+                }
+
+                if (!_agentUiStarted)
+                {
+                    _agentUiStarted = true;
+                    addAgentPrefix = true;
+                }
+            }
+
+            if (addAgentPrefix)
+            {
+                // NO newline here.
+                TranscriptReceived?.Invoke(
+                    "Agent: ");
+            }
+
+            TranscriptReceived?.Invoke(delta);
+        }
+
+        private void Realtime_ResponseStarted(
+            string responseId)
+        {
+            long generation;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive)
+                {
+                    return;
+                }
+
+                if (_responseStarted)
+                    return;
+
+                _responseStarted = true;
+                _responseFinished = false;
+
+                _responseId =
+                    responseId;
+
+                generation =
+                    _turnGeneration;
+            }
+
+            try
+            {
+                _playbackGeneration =
+                    _playback.BeginResponse();
+            }
+            catch (Exception ex)
+            {
+                ReportError(
+                    "Playback start failed: " +
+                    ex.Message);
+
+                return;
+            }
+
+            SetState(
+                AgentState.Speaking);
+
+            SetStatus(
+                "Agent is responding. ResponseId=" +
+                responseId);
+
+            /*
+             * Important:
+             *
+             * Do NOT print "Agent: " here.
+             *
+             * The actual transcript may arrive before or after the user
+             * transcript. Realtime_TranscriptDelta controls the UI ordering.
+             */
+        }
+
+        private void Realtime_AudioReceived(
+            string responseId,
+            byte[] pcm24k)
+        {
+            long playbackGeneration;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    !_responseStarted ||
+                    _responseFinished)
+                {
+                    return;
+                }
+
+                if (!string.Equals(
+                    responseId,
+                    _responseId,
+                    StringComparison.Ordinal))
+                {
+                    /*
+                     * Stale audio from a previous response must never enter
+                     * the current speaker queue.
+                     */
+                    return;
+                }
+
+                playbackGeneration =
+                    _playbackGeneration;
+            }
+
+            _playback.WritePcm(
+                playbackGeneration,
+                pcm24k);
+        }
+
+        private void Realtime_OutputAudioCompleted(
+            string responseId)
+        {
+            /*
+             * Do not finish the turn here.
+             *
+             * response.output_audio.done means model-generated audio is
+             * finished streaming, but queued PCM may still be playing.
+             */
+            SetStatus(
+                "Agent audio stream completed. " +
+                "Waiting for response completion...");
+        }
+
+        private void Realtime_ResponseCompleted(
+            string responseId)
+        {
+            long generation;
+            long playbackGeneration;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    !_responseStarted ||
+                    _responseFinished)
+                {
+                    return;
+                }
+
+                if (!string.Equals(
+                    responseId,
+                    _responseId,
+                    StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _responseFinished = true;
+
+                generation =
+                    _turnGeneration;
+
+                playbackGeneration =
+                    _playbackGeneration;
+
+                if (_turnCleanupTask != null &&
+                    !_turnCleanupTask.IsCompleted)
+                {
+                    return;
+                }
+
+                _turnCleanupTask =
+                    FinishTurnAsync(
+                        generation,
+                        playbackGeneration,
+                        _cts.Token);
+            }
+        }
+
+        private async Task FinishTurnAsync(
+            long generation,
+            long playbackGeneration,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                SetStatus(
+                    "Response complete. Finishing speaker playback...");
+
+                await _playback.EndResponseAsync(
+                    playbackGeneration,
+                    cancellationToken)
+                    .ConfigureAwait(false);
+
+                lock (_gate)
+                {
+                    if (_disposed ||
+                        !_started ||
+                        generation != _turnGeneration)
+                    {
+                        return;
+                    }
+                }
+
+                _aec.Reset();
+
+                lock (_gate)
+                {
+                    if (_disposed ||
+                        !_started ||
+                        generation != _turnGeneration)
+                    {
+                        return;
+                    }
+
+                    _turnActive = false;
+                    _responseStarted = false;
+                    _responseFinished = false;
+                    _responseId = null;
+
+                    /*
+                     * Clear any transcript state left from this turn.
+                     */
+                    ResetTranscriptState();
+                }
+
+                /*
+                 * Wake mode is reopened only after the previous response
+                 * has completely drained.
+                 */
+                _wakeWord.SetEnabled(true);
+
+                SetState(
+                    AgentState.Idle);
+
+                SetStatus(
+                    "Ready. Waiting for wake word: Computer");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                ReportError(
+                    "Turn cleanup failed: " +
+                    ex.Message);
+
+                await AbortTurnAsync(
+                    generation,
+                    true)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        private async Task AbortTurnAsync(
+            long generation,
+            bool reportIdle)
+        {
+            try
+            {
+                lock (_gate)
+                {
+                    if (_disposed)
+                        return;
+
+                    if (generation != _turnGeneration)
+                        return;
+                }
+
+                _playback.Stop();
+
+                try
+                {
+                    await _realtime.CancelResponseAsync(
+                        CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                }
+
+                _aec.Reset();
+
+                lock (_gate)
+                {
+                    if (_disposed ||
+                        !_started ||
+                        generation != _turnGeneration)
+                    {
+                        return;
+                    }
+
+                    _turnActive = false;
+                    _responseStarted = false;
+                    _responseFinished = false;
+                    _responseId = null;
+
+                    ResetTranscriptState();
+                }
+
+                _wakeWord.SetEnabled(true);
+
+                if (reportIdle)
+                {
+                    SetState(
+                        AgentState.Idle);
+
+                    SetStatus(
+                        "Turn reset. Waiting for wake word: Computer");
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private void Realtime_Disconnected()
+        {
+            bool shouldReport;
+
+            lock (_gate)
+            {
+                shouldReport =
+                    !_disposed &&
+                    _started;
+            }
+
+            if (!shouldReport)
+                return;
+
+            SetStatus(
+                "OpenAI Realtime disconnected.");
+
+            /*
+             * Do not automatically destroy wake-word state here.
+             * The next wake can establish a fresh Realtime connection.
+             */
+        }
+
+        private void ResetTranscriptState()
+        {
+            _pendingAgentTranscript.Clear();
+
+            _userTranscriptReceived = false;
+            _agentUiStarted = false;
+        }
+
+        private static byte[] ConvertCaptureToPcm16Mono(
+            byte[] input,
+            NAudio.Wave.WaveFormat format)
+        {
+            if (input == null ||
+                input.Length == 0 ||
+                format == null)
+            {
+                return new byte[0];
+            }
+
+            if (format.Encoding ==
+                NAudio.Wave.WaveFormatEncoding.IeeeFloat &&
                 format.BitsPerSample == 32)
             {
-                int channels = format.Channels;
-                int bytesPerSample = 4;
-                int frameSize = channels * bytesPerSample;
-                int frameCount = input.Length / frameSize;
+                int channels =
+                    Math.Max(
+                        1,
+                        format.Channels);
 
-                byte[] output = new byte[frameCount * 2];
+                int frameBytes =
+                    channels * 4;
 
-                for (int frame = 0; frame < frameCount; frame++)
+                int frameCount =
+                    input.Length / frameBytes;
+
+                byte[] output =
+                    new byte[frameCount * 2];
+
+                for (int frame = 0;
+                     frame < frameCount;
+                     frame++)
                 {
-                    float sum = 0;
+                    double sum = 0.0;
 
-                    for (int channel = 0; channel < channels; channel++)
+                    for (int channel = 0;
+                         channel < channels;
+                         channel++)
                     {
-                        int offset = frame * frameSize + channel * bytesPerSample;
-                        float sample = BitConverter.ToSingle(input, offset);
+                        int offset =
+                            frame * frameBytes +
+                            channel * 4;
+
+                        float sample =
+                            BitConverter.ToSingle(
+                                input,
+                                offset);
+
                         sum += sample;
                     }
 
-                    float mono = sum / channels;
+                    double mono =
+                        sum / channels;
 
-                    if (mono > 1.0f) mono = 1.0f;
-                    if (mono < -1.0f) mono = -1.0f;
+                    if (mono > 1.0)
+                        mono = 1.0;
 
-                    short pcm16 = (short)(mono * 32767.0f);
+                    if (mono < -1.0)
+                        mono = -1.0;
 
-                    int outputOffset = frame * 2;
-                    output[outputOffset] = (byte)(pcm16 & 0xFF);
-                    output[outputOffset + 1] = (byte)((pcm16 >> 8) & 0xFF);
+                    short pcm =
+                        (short)(
+                            mono * 32767.0);
+
+                    output[frame * 2] =
+                        (byte)(
+                            pcm & 0xFF);
+
+                    output[frame * 2 + 1] =
+                        (byte)(
+                            (pcm >> 8) & 0xFF);
                 }
 
                 return output;
             }
 
-            throw new NotSupportedException(
-                "Unsupported microphone format: " + format);
+            if (format.Encoding ==
+                NAudio.Wave.WaveFormatEncoding.Pcm &&
+                format.BitsPerSample == 16)
+            {
+                int channels =
+                    Math.Max(
+                        1,
+                        format.Channels);
+
+                if (channels == 1)
+                    return input;
+
+                int frameBytes =
+                    channels * 2;
+
+                int frameCount =
+                    input.Length / frameBytes;
+
+                byte[] output =
+                    new byte[frameCount * 2];
+
+                for (int frame = 0;
+                     frame < frameCount;
+                     frame++)
+                {
+                    int sum = 0;
+
+                    for (int channel = 0;
+                         channel < channels;
+                         channel++)
+                    {
+                        int offset =
+                            frame * frameBytes +
+                            channel * 2;
+
+                        sum +=
+                            BitConverter.ToInt16(
+                                input,
+                                offset);
+                    }
+
+                    short mono =
+                        (short)(
+                            sum / channels);
+
+                    output[frame * 2] =
+                        (byte)(
+                            mono & 0xFF);
+
+                    output[frame * 2 + 1] =
+                        (byte)(
+                            (mono >> 8) & 0xFF);
+                }
+
+                return output;
+            }
+
+            return new byte[0];
         }
 
-        private static byte[] PcmToWav(
-            byte[] pcm,
-            int sampleRate,
-            int channels,
-            int bitsPerSample)
+        private void SetState(
+            AgentState state)
         {
-            using (var ms = new MemoryStream())
-            using (var writer = new BinaryWriter(ms))
+            lock (_gate)
             {
-                int byteRate = sampleRate * channels * bitsPerSample / 8;
-                short blockAlign = (short)(channels * bitsPerSample / 8);
+                if (_disposed)
+                    return;
 
-                writer.Write(new[] { 'R', 'I', 'F', 'F' });
-                writer.Write(36 + pcm.Length);
-                writer.Write(new[] { 'W', 'A', 'V', 'E' });
-                writer.Write(new[] { 'f', 'm', 't', ' ' });
-                writer.Write(16);
-                writer.Write((short)1);
-                writer.Write((short)channels);
-                writer.Write(sampleRate);
-                writer.Write(byteRate);
-                writer.Write(blockAlign);
-                writer.Write((short)bitsPerSample);
-                writer.Write(new[] { 'd', 'a', 't', 'a' });
-                writer.Write(pcm.Length);
-                writer.Write(pcm);
-                writer.Flush();
-                return ms.ToArray();
+                _state = state;
             }
+
+            StateChanged?.Invoke(state);
+        }
+
+        private void SetStatus(
+            string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return;
+
+            lock (_gate)
+            {
+                if (_disposed)
+                    return;
+            }
+
+            StatusChanged?.Invoke(status);
+        }
+
+        private void ReportError(
+            string message)
+        {
+            Error?.Invoke(message);
+        }
+
+        private void StopInternal()
+        {
+            CancellationTokenSource cts;
+
+            lock (_gate)
+            {
+                if (!_started)
+                    return;
+
+                _started = false;
+
+                _turnActive = false;
+                _responseStarted = false;
+                _responseFinished = false;
+                _responseId = null;
+
+                ResetTranscriptState();
+
+                cts = _cts;
+                _cts = null;
+            }
+
+            try
+            {
+                _wakeWord.SetEnabled(false);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _capture.Stop();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _playback.Stop();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                cts?.Cancel();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                cts?.Dispose();
+            }
+            catch
+            {
+            }
+
+            SetState(
+                AgentState.Idle);
         }
 
         public void Dispose()
         {
-            Stop();
-            _capture.DataAvailable -= OnAudio;
-            _capture.Dispose();
-            _playback.Dispose();
-            _openAi.Dispose();
+            lock (_gate)
+            {
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+            }
+
+            try
+            {
+                _wakeWord.SetEnabled(false);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _capture.DataAvailable -=
+                    Capture_DataAvailable;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _realtime.Status -=
+                    Realtime_Status;
+
+                _realtime.AudioReceived -=
+                    Realtime_AudioReceived;
+
+                _realtime.UserTranscript -=
+                    Realtime_UserTranscript;
+
+                _realtime.TranscriptDelta -=
+                    Realtime_TranscriptDelta;
+
+                _realtime.ResponseStarted -=
+                    Realtime_ResponseStarted;
+
+                _realtime.OutputAudioCompleted -=
+                    Realtime_OutputAudioCompleted;
+
+                _realtime.ResponseCompleted -=
+                    Realtime_ResponseCompleted;
+
+                _realtime.Disconnected -=
+                    Realtime_Disconnected;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _capture.Stop();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _playback.Stop();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _capture.Dispose();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _wakeWord.Dispose();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _realtime.Dispose();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _playback.Dispose();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                _cts?.Dispose();
+            }
+            catch
+            {
+            }
+
+            _cts = null;
         }
     }
 }

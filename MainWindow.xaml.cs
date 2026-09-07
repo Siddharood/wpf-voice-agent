@@ -28,59 +28,50 @@ namespace WpfVoiceAgent
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine("Creating capture...");
+                var capture =
+    new WasapiAudioCapture();
 
-                var capture = new WasapiAudioCapture();
-
-                System.Diagnostics.Debug.WriteLine(
-                    "Capture created: " + capture.WaveFormat);
-
-                var aec = new PassthroughAecProcessor();
-
-                var playback = new WasapiAudioPlayback(aec);
-
-                System.Diagnostics.Debug.WriteLine("Playback created");
+                var aec =
+                    new AdaptiveAecProcessor();
 
                 var wakeWord =
                     new KeywordWakeWordDetector(
                         capture.WaveFormat.SampleRate);
 
-                System.Diagnostics.Debug.WriteLine("Wake detector created");
+                var realtime =
+                    new OpenAiRealtimeClient();
 
-                var openAi = new OpenAiClient();
+                var playback =
+                    new RealtimeAudioPlayback(aec);
 
-                System.Diagnostics.Debug.WriteLine("OpenAI client created");
-
-                _agent = new VoiceAgentController(
-                    capture,
-                    playback,
-                    aec,
-                    wakeWord,
-                    openAi);
-
-                System.Diagnostics.Debug.WriteLine(
-                    "VoiceAgentController created");
+                _agent =
+                    new VoiceAgentController(
+                        capture,
+                        aec,
+                        wakeWord,
+                        realtime,
+                        playback);
 
                 _agent.StateChanged += state =>
                     Dispatcher.Invoke(() =>
                         StateText.Text = state.ToString());
 
-                _agent.Status += status =>
+                _agent.StatusChanged += status =>
                     Dispatcher.Invoke(() =>
                         StatusText.Text = status);
 
-                _agent.Transcript += text =>
+                _agent.TranscriptReceived += text =>
                     Dispatcher.Invoke(() =>
                     {
-                        ConversationBox.AppendText(
-                            text + Environment.NewLine + Environment.NewLine);
-
+                        ConversationBox.AppendText(text);
                         ConversationBox.ScrollToEnd();
                     });
 
+
                 _agent.Error += error =>
                     Dispatcher.Invoke(() =>
-                        ErrorText.Text = error);
+                        ErrorText.Text = error
+                        );
 
                 System.Diagnostics.Debug.WriteLine(
                     "Calling agent.Start()...");

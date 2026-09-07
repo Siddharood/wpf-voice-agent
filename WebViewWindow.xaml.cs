@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
-using WpfVoiceAgent.Agent;
 using WpfVoiceAgent.Audio;
-using WpfVoiceAgent.OpenAI;
 using WpfVoiceAgent.WakeWord;
+using WpfVoiceAgent.Agent;
+using WpfVoiceAgent.OpenAI;
 
 namespace WpfVoiceAgent
 {
@@ -20,7 +20,8 @@ namespace WpfVoiceAgent
         {
             InitializeComponent();
 
-            Loaded += WebViewWindow_Loaded;
+            Loaded +=
+                WebViewWindow_Loaded;
         }
 
         private async void WebViewWindow_Loaded(
@@ -71,25 +72,28 @@ namespace WpfVoiceAgent
                 string message =
                     e.TryGetWebMessageAsString();
 
+                if (string.IsNullOrWhiteSpace(message))
+                    return;
+
                 JObject json =
                     JObject.Parse(message);
 
                 string type =
                     json["type"]?.ToString();
 
-                if (type == "command")
-                {
-                    string command =
-                        json["command"]?.ToString();
+                if (type != "command")
+                    return;
 
-                    if (command == "start")
-                    {
-                        StartAgent();
-                    }
-                    else if (command == "stop")
-                    {
-                        StopAgent();
-                    }
+                string command =
+                    json["command"]?.ToString();
+
+                if (command == "start")
+                {
+                    StartAgent();
+                }
+                else if (command == "stop")
+                {
+                    StopAgent();
                 }
             }
             catch (Exception ex)
@@ -97,7 +101,7 @@ namespace WpfVoiceAgent
                 SendToWeb(new
                 {
                     type = "error",
-                    message = ex.Message
+                    message = ex.ToString()
                 });
             }
         }
@@ -115,31 +119,31 @@ namespace WpfVoiceAgent
                 var aec =
                     new AdaptiveAecProcessor();
 
-                var playback =
-                    new WasapiAudioPlayback(aec);
-
                 var wakeWord =
                     new KeywordWakeWordDetector(
                         capture.WaveFormat.SampleRate);
 
-                var openAi =
-                    new OpenAiClient();
+                var realtime =
+                    new OpenAiRealtimeClient();
+
+                var playback =
+                    new RealtimeAudioPlayback(aec);
 
                 _agent =
                     new VoiceAgentController(
                         capture,
-                        playback,
                         aec,
                         wakeWord,
-                        openAi);
+                        realtime,
+                        playback);
 
                 _agent.StateChanged +=
                     Agent_StateChanged;
 
-                _agent.Status +=
+                _agent.StatusChanged +=
                     Agent_Status;
 
-                _agent.Transcript +=
+                _agent.TranscriptReceived +=
                     Agent_Transcript;
 
                 _agent.Error +=
@@ -202,7 +206,8 @@ namespace WpfVoiceAgent
             });
         }
 
-        private void Agent_Status(string status)
+        private void Agent_Status(
+            string status)
         {
             Dispatcher.Invoke(() =>
             {
@@ -214,25 +219,67 @@ namespace WpfVoiceAgent
             });
         }
 
-        private void Agent_Transcript(string text)
+        private void Agent_Transcript(
+            string text)
         {
+            if (string.IsNullOrEmpty(text))
+                return;
+
             Dispatcher.Invoke(() =>
             {
-                string speaker = "agent";
+                /*
+                 * Controller intentionally sends:
+                 *
+                 * \r\n\r\nYou: ...
+                 *
+                 * Therefore trim only the leading whitespace
+                 * for speaker detection/display.
+                 */
+                string cleanText =
+                    text.TrimStart(
+                        '\r',
+                        '\n',
+                        ' ',
+                        '\t');
 
-                if (text.StartsWith("You:"))
-                    speaker = "user";
+                /*
+                 * USER
+                 */
+                if (cleanText.StartsWith(
+                    "You:",
+                    StringComparison.Ordinal))
+                {
+                    SendToWeb(new
+                    {
+                        type = "transcript",
+                        speaker = "user",
+                        text = cleanText
+                    });
 
+                    return;
+                }
+
+                /*
+                 * AGENT
+                 *
+                 * IMPORTANT:
+                 *
+                 * Do NOT add "Agent: " here.
+                 *
+                 * The controller already sends the Agent
+                 * prefix when appropriate.
+                 */
                 SendToWeb(new
                 {
                     type = "transcript",
-                    speaker = speaker,
+                    speaker = "agent",
                     text = text
                 });
             });
         }
 
-        private void Agent_Error(string error)
+        private void Agent_Error(
+            string error)
         {
             Dispatcher.Invoke(() =>
             {
@@ -244,7 +291,8 @@ namespace WpfVoiceAgent
             });
         }
 
-        private void SendToWeb(object message)
+        private void SendToWeb(
+            object message)
         {
             if (!_webViewReady ||
                 WebView.CoreWebView2 == null)

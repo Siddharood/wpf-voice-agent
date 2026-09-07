@@ -27,3 +27,123 @@
 2026-09-06 03:01:21.663: [INFO] BookmarksLoadDropped droppedNodes=0
 2026-09-06 03:01:21.663: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
 2026-09-06 03:02:14.231: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:51:24.268: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:51:24.268: [INFO] Profiles total count: 1
+2026-09-07 16:51:24.268: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-06T03:01:25.687Z
+2026-09-07 16:51:24.268: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:51:24.268: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-06T03:01:25.687Z
+2026-09-07 16:51:24.268: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 16:51:24.268: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 16:51:24.268: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 16:51:24.268: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:52:17.764: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:54:59.478: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:54:59.478: [INFO] Profiles total count: 1
+2026-09-07 16:54:59.478: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:51:28.653Z
+2026-09-07 16:54:59.478: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:54:59.478: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:51:28.653Z
+2026-09-07 16:54:59.478: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 16:54:59.478: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 16:54:59.478: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 16:54:59.478: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:55:34.377: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:57:02.903: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:57:02.903: [INFO] Profiles total count: 1
+2026-09-07 16:57:02.903: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:55:34.332Z
+2026-09-07 16:57:02.903: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:57:02.903: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:55:34.332Z
+2026-09-07 16:57:02.903: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 16:57:02.903: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 16:57:02.903: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 16:57:02.903: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:57:22.763: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:58:15.357: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:58:15.357: [INFO] Profiles total count: 1
+2026-09-07 16:58:15.357: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:57:22.717Z
+2026-09-07 16:58:15.357: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:58:15.357: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:57:22.717Z
+2026-09-07 16:58:15.357: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 16:58:15.357: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 16:58:15.357: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 16:58:15.357: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:59:36.128: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 16:59:40.751: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:59:40.751: [INFO] Profiles total count: 1
+2026-09-07 16:59:40.751: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:58:20.584Z
+2026-09-07 16:59:40.751: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 16:59:40.751: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:58:20.584Z
+2026-09-07 16:59:40.751: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 16:59:40.751: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 16:59:40.751: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 16:59:40.751: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:01:27.954: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:01:35.575: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:01:35.575: [INFO] Profiles total count: 1
+2026-09-07 17:01:35.575: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:59:45.828Z
+2026-09-07 17:01:35.575: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:01:35.575: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T16:59:45.828Z
+2026-09-07 17:01:35.575: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:01:35.575: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:01:35.575: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:01:35.575: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:01:55.714: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:02:54.964: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:02:54.964: [INFO] Profiles total count: 1
+2026-09-07 17:02:54.964: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:01:55.666Z
+2026-09-07 17:02:54.964: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:02:54.964: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:01:55.666Z
+2026-09-07 17:02:54.964: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:02:54.964: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:02:54.964: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:02:54.964: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:03:54.298: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:05:30.963: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:05:30.963: [INFO] Profiles total count: 1
+2026-09-07 17:05:30.963: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:02:58.600Z
+2026-09-07 17:05:30.963: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:05:30.963: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:02:58.600Z
+2026-09-07 17:05:30.963: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:05:30.963: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:05:30.963: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:05:30.963: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:05:47.566: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:06:32.081: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:06:32.081: [INFO] Profiles total count: 1
+2026-09-07 17:06:32.081: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:05:47.523Z
+2026-09-07 17:06:32.081: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:06:32.081: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:05:47.523Z
+2026-09-07 17:06:32.081: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:06:32.081: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:06:32.081: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:06:32.081: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:08:26.529: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:09:54.467: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:09:54.467: [INFO] Profiles total count: 1
+2026-09-07 17:09:54.467: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:06:37.097Z
+2026-09-07 17:09:54.467: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:09:54.467: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:06:37.097Z
+2026-09-07 17:09:54.467: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:09:54.467: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:09:54.467: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:09:54.467: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:10:41.960: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:10:46.574: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:10:46.574: [INFO] Profiles total count: 1
+2026-09-07 17:10:46.574: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:10:41.527Z
+2026-09-07 17:10:46.574: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:10:46.574: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:10:41.527Z
+2026-09-07 17:10:46.574: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:10:46.574: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:10:46.574: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:10:46.574: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:11:15.643: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:14:03.570: [INFO] CurrentProfilePath: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:14:03.570: [INFO] Profiles total count: 1
+2026-09-07 17:14:03.570: [INFO] Profile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:11:15.583Z
+2026-09-07 17:14:03.570: [INFO] LastUsedProfileDir: C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default
+2026-09-07 17:14:03.570: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\ADMIN\Downloads\WpfVoiceAgent-x86\bin\x86\Debug\WpfVoiceAgent.exe.WebView2\EBWebView\Default lastActive=2026-09-07T17:11:15.583Z
+2026-09-07 17:14:03.570: [INFO] OnDoneLoading sync enabled: 0
+2026-09-07 17:14:03.570: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-09-07 17:14:03.570: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-09-07 17:14:03.570: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-09-07 17:14:17.675: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
