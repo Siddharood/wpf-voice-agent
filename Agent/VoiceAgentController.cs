@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,11 +12,22 @@ namespace WpfVoiceAgent.Agent
 {
     public sealed class VoiceAgentController : IDisposable
     {
+        private const int RealtimeSampleRate = 24000;
+
         private readonly IAudioCapture _capture;
         private readonly IAecProcessor _aec;
         private readonly IWakeWordDetector _wakeWord;
         private readonly OpenAiRealtimeClient _realtime;
         private readonly RealtimeAudioPlayback _playback;
+
+        /*
+         * Speaker protection gates.
+         */
+        private readonly MultiSpeakerOverlapDetector
+            _overlapDetector;
+
+        private readonly SpeakerChangeDetector
+            _speakerChangeDetector;
 
         private readonly object _gate =
             new object();
@@ -40,6 +52,17 @@ namespace WpfVoiceAgent.Agent
         private string _responseId;
 
         private Task _turnCleanupTask;
+
+        /*
+         * Speaker gate state.
+         *
+         * The overlap detector works on every PCM packet.
+         *
+         * SpeakerChangeDetector is ready to receive embeddings
+         * whenever your speaker-embedding implementation produces
+         * one.
+         */
+        private bool _speakerGateBlocked;
 
         /*
          * UI transcript ordering.
@@ -91,6 +114,19 @@ namespace WpfVoiceAgent.Agent
                 playback ??
                 throw new ArgumentNullException(
                     nameof(playback));
+
+            /*
+             * ---------------------------------------------------------
+             * Speaker protection detectors
+             * ---------------------------------------------------------
+             */
+            _overlapDetector =
+                new MultiSpeakerOverlapDetector(
+                    24000);
+
+            _speakerChangeDetector =
+                new SpeakerChangeDetector(
+                    0.70);
 
             _capture.DataAvailable +=
                 Capture_DataAvailable;
@@ -150,6 +186,8 @@ namespace WpfVoiceAgent.Agent
 
                 ResetTranscriptState();
             }
+
+            ResetSpeakerGate();
 
             try
             {
@@ -221,11 +259,9 @@ namespace WpfVoiceAgent.Agent
                 e.BytesRecorded);
 
             /*
-             * Wake-word mode.
-             *
-             * SAPI listens independently to the default microphone.
-             * We only use this capture callback as the lightweight gate
-             * that consumes the detector's latched wake event.
+             * ---------------------------------------------------------
+             * Wake-word mode
+             * ---------------------------------------------------------
              */
             if (!turnActive)
             {
@@ -243,6 +279,11 @@ namespace WpfVoiceAgent.Agent
             if (responseStarted)
                 return;
 
+            /*
+             * ---------------------------------------------------------
+             * Convert microphone input to PCM16 mono
+             * ---------------------------------------------------------
+             */
             byte[] pcm16 =
                 ConvertCaptureToPcm16Mono(
                     microphoneData,
@@ -251,6 +292,11 @@ namespace WpfVoiceAgent.Agent
             if (pcm16.Length == 0)
                 return;
 
+            /*
+             * ---------------------------------------------------------
+             * Acoustic Echo Cancellation
+             * ---------------------------------------------------------
+             */
             byte[] aecProcessed =
                 _aec.ProcessCapture(
                     pcm16);
@@ -261,18 +307,210 @@ namespace WpfVoiceAgent.Agent
                 return;
             }
 
+            /*
+             * ---------------------------------------------------------
+             * 48 kHz -> 24 kHz
+             * ---------------------------------------------------------
+             */
             byte[] pcm24k =
                 PcmResampler.Resample16BitMono(
                     aecProcessed,
                     48000,
-                    24000);
+                    RealtimeSampleRate);
 
             if (pcm24k.Length == 0)
                 return;
 
+            /*
+             * ---------------------------------------------------------
+             * SPEAKER GATE
+             * ---------------------------------------------------------
+             *
+             * Run this AFTER AEC so the detector sees the cleaned
+             * microphone signal.
+             */
+            if (IsSpeakerGateBlocked(
+                    pcm24k))
+            {
+                return;
+            }
+
+            /*
+             * ---------------------------------------------------------
+             * Send microphone audio to Realtime
+             * ---------------------------------------------------------
+             */
             _ = SendRealtimeAudioAsync(
                 pcm24k,
                 token);
+        }
+
+        private bool IsSpeakerGateBlocked(
+            byte[] pcm24k)
+        {
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    _responseStarted ||
+                    _speakerGateBlocked)
+                {
+                    return _speakerGateBlocked;
+                }
+            }
+
+            /*
+             * ---------------------------------------------------------
+             * Multi-speaker overlap detector
+             * ---------------------------------------------------------
+             */
+            bool overlapDetected =
+                _overlapDetector.Process(
+                    pcm24k);
+
+            if (overlapDetected)
+            {
+                BlockCurrentTurn(
+                    "Multiple speakers detected.");
+
+                return true;
+            }
+
+            /*
+             * ---------------------------------------------------------
+             * SpeakerChangeDetector
+             * ---------------------------------------------------------
+             *
+             * IMPORTANT:
+             *
+             * SpeakerChangeDetector requires a float[] embedding.
+             * It cannot compare the raw PCM directly.
+             *
+             * If you already have speaker embeddings elsewhere in
+             * your project, call:
+             *
+             *     CheckSpeakerEmbedding(embedding);
+             *
+             * from that component.
+             *
+             * The detector itself is initialized and reset here.
+             */
+            return false;
+        }
+
+        /*
+         * Call this method whenever your speaker-embedding component
+         * produces an embedding for the current speaker window.
+         */
+        public void CheckSpeakerEmbedding(
+            float[] embedding)
+        {
+            long generation;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    _responseStarted ||
+                    _speakerGateBlocked)
+                {
+                    return;
+                }
+
+                generation =
+                    _turnGeneration;
+            }
+
+            SpeakerComparisonResult result;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    _responseStarted ||
+                    generation != _turnGeneration)
+                {
+                    return;
+                }
+
+                result =
+                    _speakerChangeDetector.Compare(
+                        embedding);
+            }
+
+            if (result ==
+                SpeakerComparisonResult.DifferentSpeaker)
+            {
+                BlockCurrentTurn(
+                    "Different speaker detected.",
+                    generation);
+            }
+        }
+
+        private void BlockCurrentTurn(
+            string reason)
+        {
+            long generation;
+
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive)
+                {
+                    return;
+                }
+
+                generation =
+                    _turnGeneration;
+
+                _speakerGateBlocked = true;
+            }
+
+            BlockCurrentTurn(
+                reason,
+                generation);
+        }
+
+        private void BlockCurrentTurn(
+            string reason,
+            long generation)
+        {
+            lock (_gate)
+            {
+                if (_disposed ||
+                    !_started ||
+                    !_turnActive ||
+                    generation != _turnGeneration)
+                {
+                    return;
+                }
+
+                _speakerGateBlocked = true;
+            }
+
+            SetStatus(
+                "Turn blocked: " +
+                reason);
+
+            _ = AbortTurnAsync(
+                generation,
+                true);
+        }
+
+        private void ResetSpeakerGate()
+        {
+            _overlapDetector.Reset();
+
+            _speakerChangeDetector.Reset();
+
+            lock (_gate)
+            {
+                _speakerGateBlocked = false;
+            }
         }
 
         private void TryDetectWakeWord(
@@ -360,7 +598,19 @@ namespace WpfVoiceAgent.Agent
                     _turnGeneration;
 
                 ResetTranscriptState();
+
+                _speakerGateBlocked = false;
             }
+
+            /*
+             * Reset the speaker detectors for the new turn.
+             *
+             * The first speaker embedding supplied to
+             * SpeakerChangeDetector becomes the reference speaker.
+             */
+            _overlapDetector.Reset();
+
+            _speakerChangeDetector.Reset();
 
             try
             {
@@ -439,7 +689,8 @@ namespace WpfVoiceAgent.Agent
                     if (_disposed ||
                         !_started ||
                         !_turnActive ||
-                        _responseStarted)
+                        _responseStarted ||
+                        _speakerGateBlocked)
                     {
                         return;
                     }
@@ -467,9 +718,8 @@ namespace WpfVoiceAgent.Agent
             SetStatus(status);
         }
 
-
         private void Realtime_UserTranscript(
-    string transcript)
+            string transcript)
         {
             if (string.IsNullOrWhiteSpace(transcript))
                 return;
@@ -498,15 +748,14 @@ namespace WpfVoiceAgent.Agent
                 }
             }
 
-            // New line BEFORE the next You message.
             TranscriptReceived?.Invoke(
                 Environment.NewLine +
                 Environment.NewLine +
                 "You: " +
                 transcript);
 
-            // Agent stays directly after You on the same line.
-            if (!string.IsNullOrEmpty(pendingAgentText))
+            if (!string.IsNullOrEmpty(
+                    pendingAgentText))
             {
                 TranscriptReceived?.Invoke(
                     Environment.NewLine +
@@ -514,8 +763,9 @@ namespace WpfVoiceAgent.Agent
                     pendingAgentText);
             }
         }
+
         private void Realtime_TranscriptDelta(
-    string delta)
+            string delta)
         {
             if (string.IsNullOrEmpty(delta))
                 return;
@@ -546,7 +796,6 @@ namespace WpfVoiceAgent.Agent
 
             if (addAgentPrefix)
             {
-                // NO newline here.
                 TranscriptReceived?.Invoke(
                     "Agent: ");
             }
@@ -557,8 +806,6 @@ namespace WpfVoiceAgent.Agent
         private void Realtime_ResponseStarted(
             string responseId)
         {
-            long generation;
-
             lock (_gate)
             {
                 if (_disposed ||
@@ -576,9 +823,6 @@ namespace WpfVoiceAgent.Agent
 
                 _responseId =
                     responseId;
-
-                generation =
-                    _turnGeneration;
             }
 
             try
@@ -601,15 +845,6 @@ namespace WpfVoiceAgent.Agent
             SetStatus(
                 "Agent is responding. ResponseId=" +
                 responseId);
-
-            /*
-             * Important:
-             *
-             * Do NOT print "Agent: " here.
-             *
-             * The actual transcript may arrive before or after the user
-             * transcript. Realtime_TranscriptDelta controls the UI ordering.
-             */
         }
 
         private void Realtime_AudioReceived(
@@ -634,10 +869,6 @@ namespace WpfVoiceAgent.Agent
                     _responseId,
                     StringComparison.Ordinal))
                 {
-                    /*
-                     * Stale audio from a previous response must never enter
-                     * the current speaker queue.
-                     */
                     return;
                 }
 
@@ -653,12 +884,6 @@ namespace WpfVoiceAgent.Agent
         private void Realtime_OutputAudioCompleted(
             string responseId)
         {
-            /*
-             * Do not finish the turn here.
-             *
-             * response.output_audio.done means model-generated audio is
-             * finished streaming, but queued PCM may still be playing.
-             */
             SetStatus(
                 "Agent audio stream completed. " +
                 "Waiting for response completion...");
@@ -738,6 +963,8 @@ namespace WpfVoiceAgent.Agent
 
                 _aec.Reset();
 
+                ResetSpeakerGate();
+
                 lock (_gate)
                 {
                     if (_disposed ||
@@ -752,16 +979,9 @@ namespace WpfVoiceAgent.Agent
                     _responseFinished = false;
                     _responseId = null;
 
-                    /*
-                     * Clear any transcript state left from this turn.
-                     */
                     ResetTranscriptState();
                 }
 
-                /*
-                 * Wake mode is reopened only after the previous response
-                 * has completely drained.
-                 */
                 _wakeWord.SetEnabled(true);
 
                 SetState(
@@ -815,6 +1035,8 @@ namespace WpfVoiceAgent.Agent
 
                 _aec.Reset();
 
+                ResetSpeakerGate();
+
                 lock (_gate)
                 {
                     if (_disposed ||
@@ -864,11 +1086,6 @@ namespace WpfVoiceAgent.Agent
 
             SetStatus(
                 "OpenAI Realtime disconnected.");
-
-            /*
-             * Do not automatically destroy wake-word state here.
-             * The next wake can establish a fresh Realtime connection.
-             */
         }
 
         private void ResetTranscriptState()
@@ -908,15 +1125,17 @@ namespace WpfVoiceAgent.Agent
                 byte[] output =
                     new byte[frameCount * 2];
 
-                for (int frame = 0;
-                     frame < frameCount;
-                     frame++)
+                for (
+                    int frame = 0;
+                    frame < frameCount;
+                    frame++)
                 {
                     double sum = 0.0;
 
-                    for (int channel = 0;
-                         channel < channels;
-                         channel++)
+                    for (
+                        int channel = 0;
+                        channel < channels;
+                        channel++)
                     {
                         int offset =
                             frame * frameBytes +
@@ -976,15 +1195,17 @@ namespace WpfVoiceAgent.Agent
                 byte[] output =
                     new byte[frameCount * 2];
 
-                for (int frame = 0;
-                     frame < frameCount;
-                     frame++)
+                for (
+                    int frame = 0;
+                    frame < frameCount;
+                    frame++)
                 {
                     int sum = 0;
 
-                    for (int channel = 0;
-                         channel < channels;
-                         channel++)
+                    for (
+                        int channel = 0;
+                        channel < channels;
+                        channel++)
                     {
                         int offset =
                             frame * frameBytes +
@@ -1066,11 +1287,15 @@ namespace WpfVoiceAgent.Agent
                 _responseFinished = false;
                 _responseId = null;
 
+                _speakerGateBlocked = false;
+
                 ResetTranscriptState();
 
                 cts = _cts;
                 _cts = null;
             }
+
+            ResetSpeakerGate();
 
             try
             {
@@ -1241,3 +1466,4 @@ namespace WpfVoiceAgent.Agent
         }
     }
 }
+

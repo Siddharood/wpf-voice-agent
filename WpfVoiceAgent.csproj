@@ -48,8 +48,11 @@
     </Page>
     <Compile Include="App.xaml.cs" />
     <Compile Include="Audio\AdaptiveAecProcessor.cs" />
+    <Compile Include="Audio\ISpeakerEmbeddingProvider.cs" />
+    <Compile Include="Audio\MultiSpeakerOverlapDetector.cs" />
     <Compile Include="Audio\PcmResampler.cs" />
     <Compile Include="Audio\RealtimeAudioPlayback.cs" />
+    <Compile Include="Audio\SpeakerChangeDetector.cs" />
     <Compile Include="OpenAI\OpenAiRealtimeClient.cs" />
     <Compile Include="WebViewWindow.xaml.cs" />
     <Compile Include="MainWindow.xaml.cs" />
